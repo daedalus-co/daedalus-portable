@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daedalus Portable AI</title>
+    <!-- Premium Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #030712;
+            --accent: #6366f1;
+            --glass: rgba(255, 255, 255, 0.03);
+            --border: rgba(255, 255, 255, 0.08);
+            --text: #f9fafb;
+            --text-dim: #9ca3af;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-image: radial-gradient(circle at 50% 50%, #1e1b4b 0%, #030712 100%);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            height: 90vh;
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            position: relative;
+        }
+
+        header {
+            padding: 24px 32px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.5rem;
+            margin: 0;
+            background: linear-gradient(135deg, #a5b4fc, #6366f1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .status {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dot { width: 8px; height: 8px; background: #22c55e; border-radius: 50%; display: none; }
+        .dot.active { display: block; box-shadow: 0 0 10px #22c55e; }
+
+        .chat-area {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .message {
+            padding: 16px 24px;
+            border-radius: 18px;
+            max-width: 80%;
+            line-height: 1.6;
+            font-size: 1rem;
+        }
+
+        .user {
+            align-self: flex-end;
+            background: var(--accent);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .ai {
+            align-self: flex-start;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            border-bottom-left-radius: 4px;
+        }
+
+        .loader {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 100;
+        }
+
+        #progress-bar {
+            width: 200px;
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            margin: 16px auto;
+            overflow: hidden;
+        }
+
+        #progress-inner {
+            width: 0%;
+            height: 100%;
+            background: var(--accent);
+            transition: width 0.3s;
+        }
+
+        .input-area {
+            padding: 24px 32px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 16px;
+        }
+
+        input {
+            flex-grow: 1;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px 20px;
+            color: white;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus { border-color: var(--accent); }
+
+        button {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 0 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="loading-overlay" class="loader">
+            <h2 style="font-family:'Outfit'">Initializing WebGPU</h2>
+            <p id="status-label" style="color:var(--text-dim); font-size:0.9rem">Fetching model library...</p>
+            <div id="progress-bar"><div id="progress-inner"></div></div>
+        </div>
+
+        <header>
+            <h1>Daedalus Portable</h1>
+            <div class="status">
+                <div id="active-dot" class="dot"></div>
+                <span id="engine-status">Engine Standby</span>
+            </div>
+        </header>
+
+        <div class="chat-area" id="chat-box">
+            <div class="message ai">Welcome. I am your portable assistant, running entirely on your GPU via WebGPU. Your data never leaves this browser.</div>
+        </div>
+
+        <div class="input-area">
+            <input type="text" id="user-input" placeholder="Ask anything..." disabled onkeypress="if(event.key==='Enter') send()">
+            <button id="send-btn" disabled onclick="send()">Send</button>
+        </div>
+    </div>
+
+    <!-- WebLLM Module -->
+    <script type="module">
+        import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+
+        const statusLabel = document.getElementById("status-label");
+        const progressInner = document.getElementById("progress-inner");
+        const chatBox = document.getElementById("chat-box");
+        const userInput = document.getElementById("user-input");
+        const sendBtn = document.getElementById("send-btn");
+        const overlay = document.getElementById("loading-overlay");
+
+        const selectedModel = "Llama-3.2-1B-Instruct-q4f16_1-MLC";
+        let engine;
+
+        async function init() {
+            try {
+                engine = await webllm.CreateMLCEngine(
+                    selectedModel,
+                    {
+                        initProgressCallback: (report) => {
+                            statusLabel.textContent = report.text;
+                            const progress = report.progress * 100;
+                            progressInner.style.width = progress + "%";
+                            if (progress >= 100) {
+                                setTimeout(() => {
+                                    overlay.style.display = "none";
+                                    userInput.disabled = false;
+                                    sendBtn.disabled = false;
+                                    document.getElementById("active-dot").classList.add("active");
+                                    document.getElementById("engine-status").textContent = "WebGPU Active";
+                                }, 500);
+                            }
+                        }
+                    }
+                );
+            } catch (err) {
+                statusLabel.textContent = "Error: WebGPU not supported or initialization failed.";
+                console.error(err);
+            }
+        }
+
+        window.send = async function() {
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            addMsg(text, "user");
+            userInput.value = "";
+            userInput.disabled = true;
+
+            const aiMsg = addMsg("...", "ai");
+            let fullText = "";
+
+            const chunks = await engine.chat.completions.create({
+                messages: [{ role: "user", content: text }],
+                stream: true
+            });
+
+            for await (const chunk of chunks) {
+                const content = chunk.choices[0]?.delta?.content || "";
+                fullText += content;
+                aiMsg.textContent = fullText;
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+
+            userInput.disabled = false;
+            userInput.focus();
+        };
+
+        function addMsg(text, role) {
+            const div = document.createElement("div");
+            div.className = `message ${role}`;
+            div.textContent = text;
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            return div;
+        }
+
+        init();
+    </script>
+</body>
+</html>
