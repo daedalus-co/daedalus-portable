@@ -232,11 +232,12 @@
                     }
                 );
             } catch (err) {
-                statusLabel.innerHTML = `<span style="color:#f87171">Error: ${err.message}</span><br><br>
-                <div style="text-align:left; font-size:0.8rem; margin-top:10px; opacity:0.8">
-                    • <b>Chrome/Edge</b>: Ensure you are on version 113+<br>
-                    • <b>Mobile</b>: WebGPU is currently <b>not supported</b> on most phones.<br>
-                    • <b>Linux</b>: Ensure your Vulkan/Mesa drivers are up to date.
+                statusLabel.innerHTML = `<span style="color:#f87171; font-weight:600">Error: ${err.message}</span><br><br>
+                <div style="text-align:left; font-size:0.85rem; background:rgba(248,113,113,0.1); padding:15px; border-radius:12px; border:1px solid rgba(248,113,113,0.2)">
+                    <b style="color:#f87171">Quick Fixes for Linux:</b><br><br>
+                    1. <b>Enable Hardware Acceleration</b>: Go to <code>chrome://settings/system</code> and ensure "Use graphics acceleration" is <b>ON</b>.<br><br>
+                    2. <b>Chrome Flags</b>: Go to <code>chrome://flags</code>, search for <b>Vulkan</b> and set it to <b>Enabled</b>.<br><br>
+                    3. <b>Diagnostics</b>: Visit <a href="https://webgpureport.org/" target="_blank" style="color:var(--accent)">webgpureport.org</a> to see if your browser detects your NVIDIA GPU.
                 </div>`;
                 console.error(err);
             }
